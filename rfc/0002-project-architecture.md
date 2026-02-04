@@ -1,9 +1,9 @@
-# RFC: Project Architecture
+# RFC 0002: Project Architecture
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Authors**: Kaustav Das Modak, Claude
 - **Created**: 2025-02-05
-- **Depends on**: [RFC 0001: POC Scope](../0001-poc-scope.md)
+- **Depends on**: [RFC 0001: POC Scope](./0001-poc-scope.md)
 
 ## Summary
 
@@ -70,7 +70,6 @@ graph TB
 
 - **Go 1.25+**: Single binary deployment, strong stdlib
 - **Modular monolith**: Services as internal packages, can split later if needed
-- **NATS**: Optional message bus for inter-service communication (future)
 
 ### Service Modules
 
@@ -129,12 +128,20 @@ sequenceDiagram
     end
 ```
 
-### Conflict Resolution
+### Conflict Resolution by Entity Type
 
-To be determined based on POC learnings. Likely a combination of:
-- Last-write-wins for simple fields
-- CRDTs for collaborative text
-- Server-authoritative for specific operations
+| Entity Type | Strategy | Rationale |
+|-------------|----------|-----------|
+| User settings | Last-write-wins | Low conflict frequency, user controls their own settings |
+| Space, Curriculum, Lesson, Project | Last-write-wins with timestamp | Structure changes are infrequent |
+| Objective prerequisites | Server-authoritative | DAG integrity must be maintained |
+| Activity | Append-only, no conflicts | Immutable event log |
+| Observation, Note, Reflection | Last-write-wins | Single author per entry |
+| Feedback | Last-write-wins | Single author per entry |
+| Progress | Server-authoritative | Prevents gaming/inconsistency |
+| Note/Lesson content (future) | CRDTs | Collaborative text editing |
+
+For POC (single-user), conflict resolution is not applicable. This table guides future multi-device and multi-user implementation.
 
 ## Monorepo Structure
 
@@ -166,12 +173,102 @@ prolly/
 └── docs/                     # Additional docs
 ```
 
+## Data Contract
+
+Frontend (TypeScript) and backend (Go) must maintain schema alignment. Strategy:
+
+### Approach
+
+1. **Source of truth**: TypeScript interfaces in `app/src/lib/models/`
+2. **Go generation**: Use [tygo](https://github.com/gzuidhof/tygo) or manual mirroring with struct tags
+3. **Validation**: JSON Schema generated from TypeScript for runtime validation on both ends
+4. **Contract testing**: API integration tests verify request/response shapes match
+
+### Schema Sync Process
+
+```mermaid
+flowchart LR
+    TS[TypeScript Interfaces] --> JSON[JSON Schema]
+    JSON --> Validate[Runtime Validation]
+    TS -.->|manual or tygo| Go[Go Structs]
+    Go --> Validate
+```
+
+### Guidelines
+
+- All entity changes start in TypeScript interfaces
+- Go structs must use `json` tags matching TypeScript field names (camelCase)
+- Breaking changes require version bump and migration path
+- CI runs contract tests on every PR touching models
+
 ## Security Considerations
 
-- All data encrypted at rest in cloud storage
-- End-to-end encryption for sensitive data (future)
-- Auth via standard OAuth2/OIDC providers
-- No tracking, minimal telemetry (opt-in only)
+### POC (Local-First)
+
+- **No encryption at rest**: IndexedDB does not encrypt by default. This is acceptable for POC as data is local-only.
+- **No authentication**: Single-user, local-only mode requires no auth.
+
+### Cloud Features (Future)
+
+| Concern | Approach |
+|---------|----------|
+| Authentication | OAuth2/OIDC via Auth0, Clerk, or Supabase Auth |
+| Authorization | RBAC/ReBAC based on Space membership roles |
+| Data at rest | AES-256-GCM encryption in cloud storage |
+| Data in transit | TLS 1.3 required for all API connections |
+| Sensitive fields | Client-side encryption via Web Crypto API before sync (reflections, observations) |
+| Sessions | JWT with short expiry + refresh tokens |
+
+### Privacy
+
+- No tracking or analytics by default
+- Telemetry is opt-in only
+- User data never shared with third parties
+- Users can export and delete all their data
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 24+ (LTS)
+- pnpm 9+
+- Go 1.25+
+
+### Frontend Only (POC)
+
+```bash
+cd app
+pnpm install
+pnpm dev          # Start dev server at http://localhost:5173
+pnpm build        # Production build
+pnpm preview      # Preview production build
+```
+
+### Full Stack (Future)
+
+```bash
+# Terminal 1: Frontend
+cd app
+pnpm dev
+
+# Terminal 2: Backend
+cd services
+go run ./cmd/prolly serve
+
+# Or use the provided dev script (future)
+./scripts/dev.sh  # Runs both with hot reload
+```
+
+### Environment Variables
+
+```bash
+# app/.env.local (frontend)
+PUBLIC_API_URL=http://localhost:8080  # Only needed when backend exists
+
+# services/.env (backend, future)
+DATABASE_URL=postgres://...
+JWT_SECRET=...
+```
 
 ## Alternatives & Tradeoffs
 

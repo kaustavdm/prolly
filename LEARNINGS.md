@@ -13,10 +13,15 @@ Compressed insights from project planning sessions.
 ## Data Model
 
 - Documents with ID references, not normalized tables—maps well to IndexedDB
-- **Activities** are append-only log (events); **Progress** is persisted state (can reconcile later)
+- **Activities** are append-only with versioning via `parentId`—edits create new versions, preserves audit trail
+- **Progress** is persisted state (not derived)—Activities serve as audit log
 - **Refs pattern** (`refs: { objectiveId?, lessonId?, ... }`) for polymorphic references
 - Two Dexie databases: main (syncable) and local-only (settings, UI state)
+- All mutable entities have `version: number` and `deletedAt?: string` for sync-readiness
+- Soft deletes everywhere (except Activity)—required for future sync
+- **DAG validation required** for Objective prerequisites—cycle detection mandatory
 - Renamed "Retrospective" → "Reflection" for clarity
+- Lesson has optional `curriculumId` for sequencing; can exist standalone or in curriculum
 
 ## User Model
 
@@ -28,10 +33,12 @@ Compressed insights from project planning sessions.
 ## UX Principles
 
 - **Keyboard-first**: vim-like modal keys (`n o` = new objective, `g h` = go home)
-- **Command palette** (`Cmd+K`) for discoverability
+- **Focus mode rules**: Modal keys only active when no text input focused; prevents conflicts
+- **Command palette** (`Cmd+K`) for discoverability—always available even in inputs
 - **Escape** always returns to normal mode—never trap the user
 - Minimalist chrome; content takes center stage
 - Theming: token-based architecture, default light + dark themes
+- **Component build order** follows milestones: primitives (M2) → entity cards (M3) → tracking (M4) → views (M5) → polish (M6)
 
 ## RFC Process
 
@@ -44,6 +51,24 @@ Compressed insights from project planning sessions.
 In scope: local storage, PWA, personal space, curriculum/objective/lesson/project CRUD, activities, observations, notes, reflections, progress tracking, keyboard navigation, command palette, responsive design, dark mode
 
 Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
+
+## Storage Patterns
+
+- Name blob interface `StoredBlob` to avoid conflict with native `Blob`
+- Blobs use `refCount` for garbage collection; `releaseBlob()` decrements, cleanup removes orphans
+- `computeChecksum()` uses Web Crypto API `crypto.subtle.digest('SHA-256', buffer)`
+- Always `URL.revokeObjectURL()` after using blob URLs—prevents memory leaks
+- Wrap DB operations in `safeDbOperation()` for consistent error handling
+- Define transaction boundaries explicitly—curriculum+objectives creation must be atomic
+- Export format: `ProllyExport` interface with base64-encoded blobs for portability
+
+## Implementation Patterns
+
+- TypeScript interfaces are source of truth; Go structs mirror with `json` tags
+- Conflict resolution by entity type: LWW for most, server-authoritative for Progress/DAG integrity
+- `normalizeKey()` converts KeyboardEvent to string like `'Mod+k'` (Mod = Cmd/Ctrl)
+- Global `keyboardStore` exposes mode to UI; `keymap` action writes to it
+- Command registry: `async execute()` with try/catch, `onError` handlers for toast notifications
 
 ## Tech Stack Summary
 

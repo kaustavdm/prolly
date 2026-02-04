@@ -1,9 +1,9 @@
-# RFC: UI/UX Design System
+# RFC 0005: UI/UX Design System
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Authors**: Kaustav Das Modak, Claude
 - **Created**: 2025-02-05
-- **Depends on**: [RFC 0001: POC Scope](../0001-poc-scope.md)
+- **Depends on**: [RFC 0001: POC Scope](./0001-poc-scope.md)
 
 ## Summary
 
@@ -380,6 +380,21 @@ NavigationTree
 └── keyboard navigation
 ```
 
+### Component Build Order by Milestone
+
+Components should be built in order of milestone dependency:
+
+| Milestone | Components | Rationale |
+|-----------|------------|-----------|
+| **M1: Foundation** | - | No UI components, just project setup |
+| **M2: Command System** | Button, Input, Modal, CommandPalette, KeyboardModeIndicator | Core interaction primitives |
+| **M3: Core Entities** | Card, Badge, Dropdown, FormField, CurriculumCard, ObjectiveCard, LessonCard, ProjectCard | Entity display and editing |
+| **M4: Tracking** | ActivityItem, ActivityFeed, ObservationForm, NoteEditor, ReflectionForm, ProgressIndicator | Tracking and evidence capture |
+| **M5: Views & Reports** | NavigationTree, Dashboard widgets, ProgressChart, ReportView | Data visualization and reporting |
+| **M6: Polish** | EmptyState, LoadingState, SkeletonScreen, Toast, ErrorBoundary, OnboardingFlow | UX refinements |
+
+**Build primitives first**: Button, Input, Card, Badge must exist before compound components.
+
 ## Responsive Behavior
 
 ### Breakpoints
@@ -408,10 +423,125 @@ NavigationTree
 
 ## Keyboard System Implementation
 
+### Focus Mode Rules
+
+Modal keyboard shortcuts only activate when **no text input is focused**. This prevents conflicts between typing and commands.
+
+```typescript
+// Check if keyboard shortcuts should be active
+function isCommandModeActive(): boolean {
+  const activeElement = document.activeElement;
+  if (!activeElement) return true;
+
+  const tagName = activeElement.tagName.toLowerCase();
+  const isInput = tagName === 'input' || tagName === 'textarea';
+  const isContentEditable = activeElement.getAttribute('contenteditable') === 'true';
+
+  return !isInput && !isContentEditable;
+}
+```
+
+**Behavior:**
+- When focused on input/textarea: All keys type normally, only `Escape` exits to command mode
+- When not focused on input: Modal keys are active (`n`, `g`, `d`, etc.)
+- `Cmd/Ctrl+K` always opens command palette (even in input)
+- `/` focuses search input (passthrough when already in input)
+
+### Key Normalization
+
+```typescript
+// utils/keyboard.ts
+// Normalize KeyboardEvent to a consistent string representation
+
+export function normalizeKey(event: KeyboardEvent): string {
+  const parts: string[] = [];
+
+  // Modifiers (use Cmd on Mac, Ctrl elsewhere)
+  if (event.metaKey || event.ctrlKey) {
+    parts.push('Mod');  // Normalized: Cmd on Mac, Ctrl on Windows/Linux
+  }
+  if (event.altKey) {
+    parts.push('Alt');
+  }
+  if (event.shiftKey && event.key.length > 1) {
+    // Only add Shift for non-character keys (Shift+A = 'A', Shift+Enter = 'Shift+Enter')
+    parts.push('Shift');
+  }
+
+  // Key itself
+  let key = event.key;
+
+  // Normalize common keys
+  const keyMap: Record<string, string> = {
+    ' ': 'Space',
+    'ArrowUp': 'Up',
+    'ArrowDown': 'Down',
+    'ArrowLeft': 'Left',
+    'ArrowRight': 'Right',
+  };
+  key = keyMap[key] || key;
+
+  // Single characters are lowercase for consistency
+  if (key.length === 1) {
+    key = key.toLowerCase();
+  }
+
+  parts.push(key);
+  return parts.join('+');
+}
+
+// Examples:
+// 'a' key -> 'a'
+// 'A' key (Shift+a) -> 'A' (uppercase preserved)
+// Cmd+K on Mac -> 'Mod+k'
+// Ctrl+K on Windows -> 'Mod+k'
+// Escape -> 'Escape'
+// Space -> 'Space'
+```
+
+### Global Keyboard Mode State
+
+```typescript
+// stores/keyboard.ts
+import { writable, derived } from 'svelte/store';
+
+export type KeyboardMode = 'normal' | 'new' | 'go' | 'edit' | 'delete' | 'search';
+
+interface KeyboardState {
+  mode: KeyboardMode;
+  pending: string[];  // Keys pressed in current sequence
+}
+
+function createKeyboardStore() {
+  const { subscribe, set, update } = writable<KeyboardState>({
+    mode: 'normal',
+    pending: [],
+  });
+
+  return {
+    subscribe,
+    setMode: (mode: KeyboardMode) => update(s => ({ ...s, mode, pending: [] })),
+    addPending: (key: string) => update(s => ({ ...s, pending: [...s.pending, key] })),
+    reset: () => set({ mode: 'normal', pending: [] }),
+  };
+}
+
+export const keyboardStore = createKeyboardStore();
+
+// Derived store for UI display
+export const keyboardModeDisplay = derived(keyboardStore, $kb => {
+  if ($kb.mode === 'normal') return null;
+  const pendingStr = $kb.pending.length > 0 ? $kb.pending.join(' ') + ' …' : '';
+  return { mode: $kb.mode, pending: pendingStr };
+});
+```
+
 ### Svelte Action for Key Bindings
 
 ```typescript
 // actions/keymap.ts
+import { keyboardStore, type KeyboardMode } from '$lib/stores/keyboard';
+
 type KeyHandler = (event: KeyboardEvent) => void | boolean;
 
 interface Keymap {
@@ -423,7 +553,12 @@ export function keymap(node: HTMLElement, keymap: Keymap) {
   let modeStack: Keymap[] = [];
 
   function handleKeydown(event: KeyboardEvent) {
+    // Skip if typing in input (except for Escape and Mod+K)
     const key = normalizeKey(event);
+    if (!isCommandModeActive() && key !== 'Escape' && !key.startsWith('Mod+')) {
+      return;
+    }
+
     const handler = currentMode[key];
 
     if (typeof handler === 'function') {
@@ -434,15 +569,26 @@ export function keymap(node: HTMLElement, keymap: Keymap) {
       // Reset to root after action
       currentMode = keymap;
       modeStack = [];
+      keyboardStore.reset();
     } else if (typeof handler === 'object') {
       // Enter sub-mode
       modeStack.push(currentMode);
       currentMode = handler;
       event.preventDefault();
+
+      // Update global state for UI feedback
+      const modeMap: Record<string, KeyboardMode> = {
+        'n': 'new', 'g': 'go', 'e': 'edit', 'd': 'delete', '/': 'search'
+      };
+      if (modeMap[key]) {
+        keyboardStore.setMode(modeMap[key]);
+      }
+      keyboardStore.addPending(key);
     } else if (key === 'Escape') {
       // Reset to root
       currentMode = keymap;
       modeStack = [];
+      keyboardStore.reset();
     }
   }
 
@@ -470,21 +616,57 @@ interface Command {
   label: string;
   shortcut?: string;
   icon?: string;
-  action: () => void;
+  action: () => void | Promise<void>;
   when?: () => boolean;  // Contextual availability
+}
+
+interface CommandError {
+  commandId: string;
+  error: Error;
+  timestamp: Date;
 }
 
 class CommandRegistry {
   private commands = new Map<string, Command>();
+  private errorHandlers: ((error: CommandError) => void)[] = [];
 
   register(command: Command) {
     this.commands.set(command.id, command);
   }
 
-  execute(id: string) {
+  unregister(id: string) {
+    this.commands.delete(id);
+  }
+
+  onError(handler: (error: CommandError) => void) {
+    this.errorHandlers.push(handler);
+    return () => {
+      this.errorHandlers = this.errorHandlers.filter(h => h !== handler);
+    };
+  }
+
+  async execute(id: string): Promise<void> {
     const command = this.commands.get(id);
-    if (command && (!command.when || command.when())) {
-      command.action();
+    if (!command) {
+      console.warn(`Command not found: ${id}`);
+      return;
+    }
+
+    if (command.when && !command.when()) {
+      console.warn(`Command not available: ${id}`);
+      return;
+    }
+
+    try {
+      await command.action();
+    } catch (error) {
+      const cmdError: CommandError = {
+        commandId: id,
+        error: error instanceof Error ? error : new Error(String(error)),
+        timestamp: new Date(),
+      };
+      console.error(`Command failed: ${id}`, error);
+      this.errorHandlers.forEach(handler => handler(cmdError));
     }
   }
 
@@ -498,6 +680,14 @@ class CommandRegistry {
     return fuzzyMatch(available, query, cmd => cmd.label);
   }
 }
+
+// Singleton instance
+export const commandRegistry = new CommandRegistry();
+
+// Register error handler to show toast
+commandRegistry.onError(({ commandId, error }) => {
+  showToast({ type: 'error', message: `Action failed: ${error.message}` });
+});
 ```
 
 ## Accessibility

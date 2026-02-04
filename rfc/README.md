@@ -31,8 +31,7 @@ rfc/
 ├── 0001-poc-scope.md           # Accepted RFCs (numbered)
 ├── 0002-*.md
 └── drafts/                      # Draft RFCs (no number)
-    ├── project-architecture.md
-    └── ...
+    └── new-feature.md
 ```
 
 ## Status
@@ -49,12 +48,11 @@ rfc/
 | RFC | Title | Status |
 |-----|-------|--------|
 | [0001](./0001-poc-scope.md) | POC Scope & Milestones | Accepted |
+| [0002](./0002-project-architecture.md) | Project Architecture | Accepted |
+| [0003](./0003-data-model.md) | Data Model | Accepted |
+| [0004](./0004-local-first-storage.md) | Local-First Storage | Accepted |
+| [0005](./0005-ui-ux-design-system.md) | UI/UX Design System | Accepted |
 
 ## Drafts
 
-| RFC | Title |
-|-----|-------|
-| [project-architecture](./drafts/project-architecture.md) | Project Architecture |
-| [data-model](./drafts/data-model.md) | Data Model |
-| [local-first-storage](./drafts/local-first-storage.md) | Local-First Storage |
-| [ui-ux-design-system](./drafts/ui-ux-design-system.md) | UI/UX Design System |
+No drafts currently.

@@ -1,9 +1,9 @@
-# RFC: Data Model
+# RFC 0003: Data Model
 
-- **Status**: Draft
+- **Status**: Accepted
 - **Authors**: Kaustav Das Modak, Claude
 - **Created**: 2025-02-05
-- **Depends on**: [RFC 0001: POC Scope](../0001-poc-scope.md)
+- **Depends on**: [RFC 0001: POC Scope](./0001-poc-scope.md)
 
 ## Summary
 
@@ -15,6 +15,23 @@ Defines the core entities, their attributes, and relationships for Prolly. This 
 2. **Events as first-class**: Activities form an append-only log
 3. **References via ID**: Relations are ID references, resolved at query time
 4. **Offline-friendly IDs**: UUIDs generated client-side
+5. **Sync-ready from start**: All mutable entities include fields for future sync
+
+## Base Entity Fields
+
+All mutable entities include these fields for sync compatibility:
+
+```typescript
+interface BaseEntity {
+  id: string;              // UUIDv7, client-generated
+  createdAt: string;       // ISO 8601 UTC
+  updatedAt: string;       // ISO 8601 UTC
+  version: number;         // Incremented on each update, for conflict detection
+  deletedAt?: string;      // ISO 8601 UTC, soft delete for sync
+}
+```
+
+**Note**: `Activity` uses versioning via `parentId` instead of `updatedAt`/`version`. Activities are never deleted (no `deletedAt`); corrections create new versions.
 
 ## Entity Overview
 
@@ -118,7 +135,7 @@ interface Curriculum {
 
 ### Objective
 
-A discrete learning goal. Can have prerequisites forming a DAG.
+A discrete learning goal. Can have prerequisites forming a DAG (Directed Acyclic Graph).
 
 ```typescript
 interface Objective {
@@ -133,6 +150,43 @@ interface Objective {
 }
 ```
 
+#### DAG Validation (Required)
+
+Implementations **MUST** validate that prerequisites form a valid DAG:
+
+1. **Cycle detection**: Before saving, verify no cycles exist using DFS or topological sort
+2. **Self-reference**: An objective cannot be its own prerequisite
+3. **Cross-curriculum**: Prerequisites must belong to the same curriculum
+4. **Existence**: All referenced prerequisite IDs must exist
+
+```typescript
+// Example validation
+function validatePrerequisites(objective: Objective, allObjectives: Objective[]): boolean {
+  const visited = new Set<string>();
+  const stack = new Set<string>();
+
+  function hasCycle(id: string): boolean {
+    if (stack.has(id)) return true;  // Cycle detected
+    if (visited.has(id)) return false;
+
+    visited.add(id);
+    stack.add(id);
+
+    const obj = allObjectives.find(o => o.id === id);
+    if (obj) {
+      for (const prereq of obj.prerequisites) {
+        if (hasCycle(prereq)) return true;
+      }
+    }
+
+    stack.delete(id);
+    return false;
+  }
+
+  return !hasCycle(objective.id);
+}
+```
+
 ### Lesson
 
 A unit of instruction addressing one or more objectives.
@@ -141,16 +195,19 @@ A unit of instruction addressing one or more objectives.
 interface Lesson {
   id: string;
   spaceId: string;
+  curriculumId?: string;         // Optional: belongs to a curriculum for sequencing
   name: string;
   description?: string;
   content?: string;              // Rich text / markdown
   objectiveIds: string[];        // Objectives this lesson addresses
   resourceIds: string[];         // Attached resources
-  order?: number;                // Sequencing within a curriculum
+  order?: number;                // Sequencing within a curriculum (requires curriculumId)
   createdAt: string;
   updatedAt: string;
 }
 ```
+
+**Note**: Lessons can exist standalone (linked to space) or within a curriculum. When `curriculumId` is set, `order` determines sequencing within that curriculum.
 
 ### Project
 
@@ -201,7 +258,7 @@ interface Resource {
 
 ### Activity
 
-An event in the learning process. The append-only log.
+An event in the learning process. Activities form an append-only log where edits create new versions.
 
 ```typescript
 interface Activity {
@@ -211,8 +268,17 @@ interface Activity {
   type: ActivityType;
   payload: Record<string, unknown>;  // Type-specific data
   refs: ActivityRefs;            // What this activity is about
-  createdAt: string;             // Immutable, no updatedAt
+  parentId?: string;             // Previous version's ID (for edits)
+  createdAt: string;             // Immutable after creation
 }
+```
+
+**Versioning**: Activities are never mutated. To edit an activity:
+1. Create a new Activity with the updated content
+2. Set `parentId` to the original activity's ID
+3. Queries show the latest version (no `parentId` pointing to it)
+
+This preserves the complete audit trail while allowing corrections.
 
 type ActivityType =
   | 'objective.started'
@@ -460,11 +526,40 @@ type User struct {
 
 **Rationale**: Refs object is explicit about what can be referenced and extensible for new entity types.
 
+## Deletion & Cascade Behavior
+
+All deletions are **soft deletes** (set `deletedAt` timestamp) to support sync. Hard deletes may be performed during data cleanup/export.
+
+| Entity | On Delete | Cascade Behavior |
+|--------|-----------|------------------|
+| User | Soft delete | Memberships orphaned (retain for audit), Activities retained |
+| Space | Soft delete | All contained entities (Curriculum, Lesson, Project, etc.) soft deleted |
+| Curriculum | Soft delete | Objectives soft deleted, Lessons with `curriculumId` have it nulled |
+| Objective | Soft delete | Remove from other objectives' `prerequisites`, Progress entries retained |
+| Lesson | Soft delete | No cascade |
+| Project | Soft delete | No cascade (milestones embedded) |
+| Resource | Soft delete | Blob orphan check scheduled (cleanup if no other references) |
+| Activity | **Immutable** | Cannot be deleted |
+| Observation, Note, Feedback, Reflection | Soft delete | No cascade |
+| Progress | Soft delete | No cascade |
+
+### Dangling Reference Handling
+
+When a referenced entity is soft-deleted:
+- Queries should filter out `deletedAt != null` by default
+- UI shows "Referenced item was deleted" for dangling refs
+- No automatic cleanup of refs (preserves history)
+
+### Orphaned Blob Cleanup
+
+Blobs are reference-counted. A background task periodically:
+1. Finds blobs with no Resource references
+2. Deletes blobs older than 24 hours with zero references
+
 ## Open Questions
 
-1. Should `Progress` be a derived view or a persisted entity?
-2. How to handle schema migrations in Dexie across versions?
-3. Should we support custom fields on entities (extensibility)?
+1. How to handle schema migrations in Dexie across versions?
+2. Should we support custom fields on entities (extensibility)?
 
 ## Future Considerations
 
