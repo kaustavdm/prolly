@@ -52,7 +52,7 @@ prolly/
 
 ## Documentation
 
-Design decisions and specifications are documented as RFCs in the `rfc/` directory. Each RFC is numbered for sorting (e.g., `0001-project-architecture.md`).
+Design decisions and specifications are documented as RFCs in the `rfc/` directory. Each RFC is numbered for sorting (e.g., `0001-poc-scope.md`).
 
 ## Development
 
