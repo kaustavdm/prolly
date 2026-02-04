@@ -231,17 +231,16 @@ flowchart LR
 ### Prerequisites
 
 - Node.js 24+ (LTS)
-- pnpm 9+
 - Go 1.25+
 
 ### Frontend Only (POC)
 
 ```bash
 cd app
-pnpm install
-pnpm dev          # Start dev server at http://localhost:5173
-pnpm build        # Production build
-pnpm preview      # Preview production build
+npm install
+npm run dev          # Start dev server at http://localhost:5173
+npm run build        # Production build
+npm run preview      # Preview production build
 ```
 
 ### Full Stack (Future)
@@ -249,7 +248,7 @@ pnpm preview      # Preview production build
 ```bash
 # Terminal 1: Frontend
 cd app
-pnpm dev
+npm run dev
 
 # Terminal 2: Backend
 cd services

@@ -60,15 +60,14 @@ Design decisions and specifications are documented as RFCs in the `rfc/` directo
 
 - Node.js 24+ (LTS)
 - Go 1.25+
-- pnpm (recommended)
 
 ### Getting Started
 
 ```bash
 # Frontend (not yet scaffolded)
 cd app
-pnpm install
-pnpm dev
+npm install
+npm run dev
 
 # Backend (not yet scaffolded)
 cd services
