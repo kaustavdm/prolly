@@ -4,10 +4,10 @@ Quick reference for continuing development on Prolly.
 
 ## First Steps
 
-1. Read `rfc/0001-poc-scope.md` for current scope and milestones
-2. Read `rfc/drafts/` for detailed specifications
-3. Read `LEARNINGS.md` for compressed decisions and rationale
-4. Check `README.md` in any directory for local context
+1. Read `LEARNINGS.md` for compressed decisions and rationale
+2. Check `README.md` in any directory for local context
+3. Read `rfc/0001-poc-scope.md` for current scope and milestones. Read other RFCs as needed.
+4. Read `rfc/drafts/` for draft specifications. Draft specifications will not be implemented.
 
 ## Maintaining LEARNINGS.md
 
@@ -45,10 +45,11 @@ prolly/
 
 ## Conventions
 
+- Node 24+ LTS, Go 1.25+
 - Use Mermaid for diagrams, not ASCII art
 - RFCs: drafts in `rfc/drafts/` (no number), accepted in `rfc/` (numbered)
 - Dual license: MIT + Apache-2.0
-- Node 24+ LTS, Go 1.25+
+- For any new feature, first plan and draft a RFC and have it reviewed and accepted before implementing.
 
 ## Entity Quick Reference
 
