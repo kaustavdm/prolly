@@ -4,100 +4,69 @@ Compressed insights from project planning sessions.
 
 ## Architecture Decisions
 
-- **Local-first PWA** chosen over server-first for offline reliability in learning contexts
-- **Svelte 5** for small bundles and runes reactivity; PWA bundle size matters
-- **Dexie** over PouchDB—we want custom sync, not CouchDB replication
-- **Go modular monolith** for backend—intentionally simple, single binary, split later if needed
-- **UUIDv7** for IDs—time-sortable, offline-friendly, no coordination needed
+- **Local-first PWA** for offline reliability; **Svelte 5** for small bundles + runes; **Dexie** for custom sync
+- **Go modular monolith** backend—single binary, split later if needed
+- **UUIDv7** for IDs—time-sortable, offline-friendly, no coordination
+- **Single-user by default**—no login required; `DEFAULT_USER_ID` constant + `getOrCreateDefault()` for implicit user
 
 ## Data Model
 
-- Documents with ID references, not normalized tables—maps well to IndexedDB
-- **Activities** are append-only with versioning via `parentId`—edits create new versions, preserves audit trail
-- **Progress** is persisted state (not derived)—Activities serve as audit log
+- Documents with ID refs, not normalized tables—maps to IndexedDB
+- **Activities** append-only with `parentId` versioning; **Progress** is persisted state, Activities are audit log
 - **Refs pattern** (`refs: { objectiveId?, lessonId?, ... }`) for polymorphic references
-- Two Dexie databases: main (syncable) and local-only (settings, UI state)
-- All mutable entities have `version: number` and `deletedAt?: string` for sync-readiness
-- Soft deletes everywhere (except Activity)—required for future sync
-- **DAG validation required** for Objective prerequisites—cycle detection mandatory
-- Renamed "Retrospective" → "Reflection" for clarity
-- Lesson has optional `curriculumId` for sequencing; can exist standalone or in curriculum
+- Two Dexie DBs: main (syncable) + local-only (settings, UI state)
+- Soft deletes everywhere (except Activity); `version: number` + `deletedAt?: string` for sync-readiness
+- **DAG validation** for Objective prerequisites—cycle detection mandatory
 
-## User Model
+## User & Space Model
 
-- Single user can be both learner and educator/facilitator
-- **Space** is the context boundary (personal, class, cohort, project)
+- Single user can be learner and educator; **Space** is context boundary (personal, class, project)
 - **Membership** links User to Space with roles—RBAC attachment point
-- Start single-player; multi-player/collaboration comes later
+- Start single-player; multi-player comes later
 
 ## UX Principles
 
 - **Keyboard-first**: vim-like modal keys (`n o` = new objective, `g h` = go home)
-- **Focus mode rules**: Modal keys only active when no text input focused; prevents conflicts
-- **Command palette** (`Cmd+K`) for discoverability—always available even in inputs
-- **Escape** always returns to normal mode—never trap the user
-- Minimalist chrome; content takes center stage
-- Theming: token-based architecture, default light + dark themes
-- **Component build order** follows milestones: primitives (M2) → entity cards (M3) → tracking (M4) → views (M5) → polish (M6)
+- Modal keys only active when no text input focused; **Escape** always returns to normal mode
+- **Command palette** (`Cmd+K`) always available; minimalist chrome, content-first
 
 ## Workflow
 
-- **Signed commits required**—all commits must be GPG/SSH signed
-- **Small commits**—one logical change per commit, easier to review and revert
-- **RFC process**: drafts in `rfc/drafts/` (no number), accepted in `rfc/` (numbered)
-- **Claude credit**: in RFCs if AI-assisted; not in commits unless explicitly requested
+- **Signed commits required**; small commits—one logical change per commit
+- **RFC process**: drafts in `rfc/drafts/`, accepted in `rfc/` (numbered)
 
 ## POC Scope
 
-In scope: local storage, PWA, personal space, curriculum/objective/lesson/project CRUD, activities, observations, notes, reflections, progress tracking, keyboard navigation, command palette, responsive design, dark mode
+**In**: local storage, PWA, personal space, CRUD for all entities, activities, tracking, keyboard nav, command palette, responsive, dark mode  
+**Out**: auth, cloud sync, multi-device, collaboration, public profiles
 
-Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
+## Service Layer
 
-## Storage Patterns
-
-- Name blob interface `StoredBlob` to avoid conflict with native `Blob`
-- Blobs use `refCount` for garbage collection; `releaseBlob()` decrements, cleanup removes orphans
-- `computeChecksum()` uses Web Crypto API `crypto.subtle.digest('SHA-256', buffer)`
-- Always `URL.revokeObjectURL()` after using blob URLs—prevents memory leaks
-- Wrap DB operations in `safeDbOperation()` for consistent error handling
-- Define transaction boundaries explicitly—curriculum+objectives creation must be atomic
-- Export format: `ProllyExport` interface with base64-encoded blobs for portability
-
-## Service Layer Patterns
-
-- **ServiceResult<T>** type for consistent error handling: `{ success: boolean; data?: T; error?: AppError }`
-- **Validation before DB ops**: centralize in `services/validation/`, composable validators (`required`, `maxLength`)
-- **Timestamp helpers**: `createTimestamp()` for new entities, `updateTimestamp()` for edits, `softDeleteFields()` for deletes
-- **Version increment on every write**—required for future sync conflict detection
-- **Cascading deletes** in transactions: `db.transaction('rw', [table1, table2], async () => { ... })`
+- **ServiceResult<T>**: `{ success, data?, error? }` with `ok()/err()` helpers
+- Validation in `services/validation/`; composable validators (`required`, `maxLength`, `validateUrl`)
+- Timestamp helpers: `createTimestamp()`, `updateTimestamp()`, `softDeleteFields()`
+- Version increment on every write; cascading deletes in transactions
+- **UserService single-user pattern**: `DEFAULT_USER_ID` + `getOrCreateDefault()` for login-free local experience
 
 ## Component Patterns
 
-- **Form components** use `$bindable()` for value binding, Snippet for children (Select options)
-- **FormField** wraps any input with label/error/help; uses `:global()` for child input error styling
-- **Toast store** uses Svelte 5 runes—`$state` array, methods return for method chaining
-- **Modal/ConfirmDialog** hierarchy: ConfirmDialog wraps Modal, keeps confirm logic reusable
-- **Animation via CSS**: `@keyframes` + CSS custom properties (`--duration-fast`, `--ease-out`)
+- **Form components**: `$bindable()` for values, Snippet for children; **FormField** wraps any input
+- **Button/LinkButton**: Button for actions, LinkButton for navigation—avoids inline .btn styles
+- **Card components**: CurriculumCard, ObjectiveCard, LessonCard, ProjectCard for entity lists
+- **EmptyState** for empty lists; **Toast** via Svelte 5 runes store
+- **Modal/ConfirmDialog**: ConfirmDialog wraps Modal; animation via CSS `@keyframes`
 
 ## Implementation Patterns
 
-- TypeScript interfaces are source of truth; Go structs mirror with `json` tags
-- Conflict resolution by entity type: LWW for most, server-authoritative for Progress/DAG integrity
-- `normalizeKey()` converts KeyboardEvent to string like `'Mod+k'` (Mod = Cmd/Ctrl)
-- Global `keyboardStore` exposes mode to UI; `keymap` action writes to it
-- Command registry: `async execute()` with try/catch, `onError` handlers for toast notifications
-- **Svelte action keymap must listen on `window`**—divs are not focusable by default; `node.addEventListener` won't receive events
-- **KeyHandler type must accept Promise**—SvelteKit's `goto()` returns `Promise<void>`, type accordingly
-- **Svelte 5 `bind:this` requires `$state`**—use `let ref = $state<HTMLElement | null>(null)` for element refs
-- **A11y for modal backdrops**: `role="presentation"` backdrops can use `svelte-ignore a11y_click_events_have_key_events`
-- **A11y for dialogs**: Elements with `role="dialog"` must have `tabindex="-1"` for focus management
+- TypeScript interfaces are source of truth; `normalizeKey()` for keyboard events (`'Mod+k'`)
+- Keymap action listens on `window`—divs aren't focusable; KeyHandler accepts Promise
+- `$state` for `bind:this` refs; A11y: `role="presentation"` for backdrops, `tabindex="-1"` for dialogs
+- **liveQuery subscriptions** for reactive dashboard data
 
 ## Dependency Management
 
-- **Pin major versions** during active development—avoid breaking changes mid-milestone
-- **`@types/node`** version must match Node.js major version (Node 24 → @types/node 22.x, not 25.x)
-- **Security updates**: Address moderate/high severity via patch/minor updates; defer major bumps to polish phase
-- **`vitest`/`vite` coupling**: These share esbuild; update together to avoid conflicts
+- Pin major versions during active development; `@types/node` must match Node.js major
+- Security updates via patch/minor; defer major bumps to polish phase
 - **`vite-plugin-pwa` 1.x**: Breaking config changes—test thoroughly before upgrading
 
 ## Tech Stack Summary
