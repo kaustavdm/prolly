@@ -27,13 +27,14 @@ export const activityService = {
 				return err('VALIDATION_ERROR', 'type is required', 'type');
 			}
 
+			// Spread payload and refs to create plain copies (Svelte 5 reactive state uses Proxies that can't be cloned)
 			const activity: Activity = {
 				id: generateUUIDv7(),
 				userId: input.userId,
 				spaceId: input.spaceId,
 				type: input.type,
-				payload: input.payload || {},
-				refs: input.refs || {},
+				payload: input.payload ? { ...input.payload } : {},
+				refs: input.refs ? { ...input.refs } : {},
 				createdAt: new Date().toISOString()
 			};
 
@@ -58,13 +59,14 @@ export const activityService = {
 				return err('NOT_FOUND', 'Parent activity not found');
 			}
 
+			// Spread payload and refs to create plain copies (Svelte 5 reactive state uses Proxies that can't be cloned)
 			const activity: Activity = {
 				id: generateUUIDv7(),
 				userId: parent.userId,
 				spaceId: parent.spaceId,
 				type: input.type,
-				payload: input.payload || {},
-				refs: input.refs || parent.refs,
+				payload: input.payload ? { ...input.payload } : {},
+				refs: input.refs ? { ...input.refs } : { ...parent.refs },
 				parentId,
 				createdAt: new Date().toISOString()
 			};

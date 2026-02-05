@@ -31,7 +31,8 @@ export const objectiveService = {
 			}
 
 			// Validate prerequisites if any
-			const prerequisites = input.prerequisites || [];
+			// Spread to create plain array copy (Svelte 5 reactive state uses Proxies that can't be cloned)
+			const prerequisites = [...(input.prerequisites || [])];
 			if (prerequisites.length > 0) {
 				const dagValidation = await validatePrerequisites(
 					'', // New objective, no ID yet
@@ -50,7 +51,7 @@ export const objectiveService = {
 				description: input.description,
 				curriculumId: input.curriculumId!,
 				prerequisites,
-				metadata: input.metadata,
+				metadata: input.metadata ? { ...input.metadata } : undefined,
 				...timestamps,
 				version: 1
 			};
@@ -102,9 +103,14 @@ export const objectiveService = {
 				}
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Objective = {
 				...existing,
-				...input,
+				name: input.name ?? existing.name,
+				description: input.description ?? existing.description,
+				curriculumId: input.curriculumId ?? existing.curriculumId,
+				prerequisites: input.prerequisites ? [...input.prerequisites] : existing.prerequisites,
+				metadata: input.metadata ? { ...input.metadata } : existing.metadata,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};
@@ -128,15 +134,18 @@ export const objectiveService = {
 				return err('NOT_FOUND', 'Objective not found');
 			}
 
+			// Spread to create plain array copy (Svelte 5 reactive state uses Proxies that can't be cloned)
+			const prereqsCopy = [...prerequisites];
+
 			// Validate DAG
-			const dagValidation = await validatePrerequisites(id, prerequisites, existing.curriculumId);
+			const dagValidation = await validatePrerequisites(id, prereqsCopy, existing.curriculumId);
 			if (!dagValidation.valid) {
 				return err('DAG_CYCLE', dagValidation.message || 'Invalid prerequisites', 'prerequisites');
 			}
 
 			const updated: Objective = {
 				...existing,
-				prerequisites,
+				prerequisites: prereqsCopy,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};

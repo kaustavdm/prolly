@@ -30,7 +30,8 @@ export const lessonService = {
 			}
 
 			// Validate objectiveIds exist if provided
-			const objectiveIds = input.objectiveIds || [];
+			// Spread to create plain array copy (Svelte 5 reactive state uses Proxies that can't be cloned)
+			const objectiveIds = [...(input.objectiveIds || [])];
 			if (objectiveIds.length > 0) {
 				const existingObjectives = await db.objectives.bulkGet(objectiveIds);
 				const validObjectives = existingObjectives.filter((o) => o && !o.deletedAt);
@@ -48,7 +49,7 @@ export const lessonService = {
 				spaceId: input.spaceId!,
 				curriculumId: input.curriculumId,
 				objectiveIds,
-				resourceIds: input.resourceIds || [],
+				resourceIds: [...(input.resourceIds || [])],
 				order: input.order,
 				...timestamps,
 				version: 1
@@ -102,7 +103,8 @@ export const lessonService = {
 			}
 
 			// Validate objectiveIds if changed
-			const objectiveIds = input.objectiveIds ?? existing.objectiveIds;
+			// Spread to create plain array copy (Svelte 5 reactive state uses Proxies that can't be cloned)
+			const objectiveIds = input.objectiveIds ? [...input.objectiveIds] : existing.objectiveIds;
 			if (input.objectiveIds !== undefined && objectiveIds.length > 0) {
 				const existingObjectives = await db.objectives.bulkGet(objectiveIds);
 				const validObjectives = existingObjectives.filter((o) => o && !o.deletedAt);
@@ -111,10 +113,17 @@ export const lessonService = {
 				}
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Lesson = {
 				...existing,
-				...input,
+				name: input.name ?? existing.name,
+				description: input.description ?? existing.description,
+				content: input.content ?? existing.content,
+				spaceId: input.spaceId ?? existing.spaceId,
+				curriculumId: input.curriculumId ?? existing.curriculumId,
 				objectiveIds,
+				resourceIds: input.resourceIds ? [...input.resourceIds] : existing.resourceIds,
+				order: input.order ?? existing.order,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};

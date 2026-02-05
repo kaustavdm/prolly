@@ -36,7 +36,7 @@ export const curriculumService = {
 				name: input.name!,
 				description: input.description,
 				spaceId: input.spaceId!,
-				metadata: input.metadata,
+				metadata: input.metadata ? { ...input.metadata } : undefined,
 				...timestamps,
 				version: 1
 			};
@@ -89,9 +89,13 @@ export const curriculumService = {
 				}
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Curriculum = {
 				...existing,
-				...input,
+				name: input.name ?? existing.name,
+				description: input.description ?? existing.description,
+				spaceId: input.spaceId ?? existing.spaceId,
+				metadata: input.metadata ? { ...input.metadata } : existing.metadata,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};

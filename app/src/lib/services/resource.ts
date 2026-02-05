@@ -38,7 +38,7 @@ export const resourceService = {
 				url: input.url,
 				blobId: input.blobId,
 				mimeType: input.mimeType,
-				metadata: input.metadata || {},
+				metadata: input.metadata ? { ...input.metadata } : {},
 				...timestamps,
 				version: 1
 			};
@@ -90,9 +90,16 @@ export const resourceService = {
 				}
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Resource = {
 				...existing,
-				...input,
+				spaceId: input.spaceId ?? existing.spaceId,
+				name: input.name ?? existing.name,
+				type: input.type ?? existing.type,
+				url: input.url ?? existing.url,
+				blobId: input.blobId ?? existing.blobId,
+				mimeType: input.mimeType ?? existing.mimeType,
+				metadata: input.metadata ? { ...input.metadata } : existing.metadata,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};

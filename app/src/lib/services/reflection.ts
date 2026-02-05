@@ -41,13 +41,14 @@ export const reflectionService = {
 			}
 
 			const timestamps = createTimestamp();
+			// Deep copy responses and period to avoid Proxy issues with IndexedDB
 			const reflection: Reflection = {
 				id: generateUUIDv7(),
 				authorId: input.authorId,
 				spaceId: input.spaceId,
 				templateId: input.templateId,
-				responses: input.responses,
-				period: input.period,
+				responses: input.responses.map((r) => ({ ...r })),
+				period: input.period ? { ...input.period } : undefined,
 				...timestamps,
 				version: 1
 			};
@@ -86,9 +87,14 @@ export const reflectionService = {
 				return err('NOT_FOUND', 'Reflection not found');
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Reflection = {
 				...existing,
-				...input,
+				authorId: input.authorId ?? existing.authorId,
+				spaceId: input.spaceId ?? existing.spaceId,
+				templateId: input.templateId ?? existing.templateId,
+				responses: input.responses ? input.responses.map((r) => ({ ...r })) : existing.responses,
+				period: input.period ? { ...input.period } : existing.period,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};

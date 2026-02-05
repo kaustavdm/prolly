@@ -30,6 +30,7 @@ export const observationService = {
 			}
 
 			const timestamps = createTimestamp();
+			// Spread refs to create plain object copy (Svelte 5 reactive state uses Proxies that can't be cloned)
 			const observation: Observation = {
 				id: generateUUIDv7(),
 				authorId: input.authorId!,
@@ -37,7 +38,7 @@ export const observationService = {
 				spaceId: input.spaceId!,
 				type: input.type!,
 				content: input.content!,
-				refs: input.refs || {},
+				refs: input.refs ? { ...input.refs } : {},
 				...timestamps,
 				version: 1
 			};
@@ -90,9 +91,15 @@ export const observationService = {
 				}
 			}
 
+			// Create plain object copy to avoid Proxy issues with IndexedDB
 			const updated: Observation = {
 				...existing,
-				...input,
+				authorId: input.authorId ?? existing.authorId,
+				subjectId: input.subjectId ?? existing.subjectId,
+				spaceId: input.spaceId ?? existing.spaceId,
+				type: input.type ?? existing.type,
+				content: input.content ?? existing.content,
+				refs: input.refs ? { ...input.refs } : existing.refs,
 				...updateTimestamp(),
 				version: existing.version + 1
 			};
