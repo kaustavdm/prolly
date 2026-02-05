@@ -62,6 +62,22 @@ Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
 - Define transaction boundaries explicitly—curriculum+objectives creation must be atomic
 - Export format: `ProllyExport` interface with base64-encoded blobs for portability
 
+## Service Layer Patterns
+
+- **ServiceResult<T>** type for consistent error handling: `{ success: boolean; data?: T; error?: AppError }`
+- **Validation before DB ops**: centralize in `services/validation/`, composable validators (`required`, `maxLength`)
+- **Timestamp helpers**: `createTimestamp()` for new entities, `updateTimestamp()` for edits, `softDeleteFields()` for deletes
+- **Version increment on every write**—required for future sync conflict detection
+- **Cascading deletes** in transactions: `db.transaction('rw', [table1, table2], async () => { ... })`
+
+## Component Patterns
+
+- **Form components** use `$bindable()` for value binding, Snippet for children (Select options)
+- **FormField** wraps any input with label/error/help; uses `:global()` for child input error styling
+- **Toast store** uses Svelte 5 runes—`$state` array, methods return for method chaining
+- **Modal/ConfirmDialog** hierarchy: ConfirmDialog wraps Modal, keeps confirm logic reusable
+- **Animation via CSS**: `@keyframes` + CSS custom properties (`--duration-fast`, `--ease-out`)
+
 ## Implementation Patterns
 
 - TypeScript interfaces are source of truth; Go structs mirror with `json` tags
@@ -70,6 +86,7 @@ Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
 - Global `keyboardStore` exposes mode to UI; `keymap` action writes to it
 - Command registry: `async execute()` with try/catch, `onError` handlers for toast notifications
 - **Svelte action keymap must listen on `window`**—divs are not focusable by default; `node.addEventListener` won't receive events
+- **KeyHandler type must accept Promise**—SvelteKit's `goto()` returns `Promise<void>`, type accordingly
 - **Svelte 5 `bind:this` requires `$state`**—use `let ref = $state<HTMLElement | null>(null)` for element refs
 - **A11y for modal backdrops**: `role="presentation"` backdrops can use `svelte-ignore a11y_click_events_have_key_events`
 - **A11y for dialogs**: Elements with `role="dialog"` must have `tabindex="-1"` for focus management
