@@ -69,11 +69,12 @@ export function keymap(node: HTMLElement, keymapConfig: Keymap) {
 		}
 	}
 
-	node.addEventListener('keydown', handleKeydown);
+	// Listen on window for global shortcuts (node is not focusable by default)
+	window.addEventListener('keydown', handleKeydown);
 
 	return {
 		destroy() {
-			node.removeEventListener('keydown', handleKeydown);
+			window.removeEventListener('keydown', handleKeydown);
 		},
 		update(newKeymap: Keymap) {
 			keymapConfig = newKeymap;
