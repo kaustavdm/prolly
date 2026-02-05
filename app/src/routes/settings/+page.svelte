@@ -1,20 +1,28 @@
 <script lang="ts">
 	import { appStore } from '$lib/stores/app.svelte';
-	import { db } from '$lib/db';
+	import { userService } from '$lib/services';
+	import { toastStore } from '$lib/stores/toast.svelte';
 	import { Button } from '$lib/components/ui';
 	import type { ThemePreference } from '$lib/models';
 
 	let userName = $state(appStore.user?.name || '');
+	let saving = $state(false);
 
 	async function updateName() {
 		if (!appStore.user || !userName.trim()) return;
 
-		await db.users.update(appStore.user.id, {
-			name: userName.trim(),
-			updatedAt: new Date().toISOString()
+		saving = true;
+		const result = await userService.update(appStore.user.id, {
+			name: userName.trim()
 		});
 
-		appStore.setUser({ ...appStore.user, name: userName.trim() });
+		if (result.success && result.data) {
+			appStore.setUser(result.data);
+			toastStore.success('Name updated');
+		} else {
+			toastStore.error(result.error?.message ?? 'Failed to update name');
+		}
+		saving = false;
 	}
 
 	function handleThemeChange(event: Event) {
@@ -34,7 +42,9 @@
 			<label for="name">Display Name</label>
 			<div class="input-group">
 				<input type="text" id="name" bind:value={userName} />
-				<Button variant="secondary" onclick={updateName}>Save</Button>
+				<Button variant="secondary" onclick={updateName} loading={saving}>
+					{saving ? 'Saving...' : 'Save'}
+				</Button>
 			</div>
 		</div>
 	</section>
