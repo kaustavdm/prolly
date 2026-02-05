@@ -69,6 +69,10 @@ Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
 - `normalizeKey()` converts KeyboardEvent to string like `'Mod+k'` (Mod = Cmd/Ctrl)
 - Global `keyboardStore` exposes mode to UI; `keymap` action writes to it
 - Command registry: `async execute()` with try/catch, `onError` handlers for toast notifications
+- **Svelte action keymap must listen on `window`**—divs are not focusable by default; `node.addEventListener` won't receive events
+- **Svelte 5 `bind:this` requires `$state`**—use `let ref = $state<HTMLElement | null>(null)` for element refs
+- **A11y for modal backdrops**: `role="presentation"` backdrops can use `svelte-ignore a11y_click_events_have_key_events`
+- **A11y for dialogs**: Elements with `role="dialog"` must have `tabindex="-1"` for focus management
 
 ## Tech Stack Summary
 
