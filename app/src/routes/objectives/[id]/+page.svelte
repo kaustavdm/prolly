@@ -3,21 +3,25 @@
 	import { goto } from '$app/navigation';
 	import { liveQuery } from 'dexie';
 	import { db } from '$lib/db';
-	import { objectiveService } from '$lib/services';
+	import { objectiveService, progressService } from '$lib/services';
 	import { toastStore } from '$lib/stores/toast.svelte';
+	import { appStore } from '$lib/stores/app.svelte';
 	import { ObjectiveForm } from '$lib/components/objective';
 	import { Button, ConfirmDialog, LoadingState, EmptyState } from '$lib/components/ui';
-	import type { Objective, Curriculum } from '$lib/models';
+	import type { Objective, Curriculum, Progress } from '$lib/models';
 	import type { ValidationErrors } from '$lib/services/validation';
 
 	let objective = $state<Objective | null>(null);
 	let curriculum = $state<Curriculum | null>(null);
 	let prerequisiteObjectives = $state<Objective[]>([]);
+	let progress = $state<Progress | null>(null);
+	let canStart = $state(true);
 	let loading = $state(true);
 	let isEditing = $state(false);
 	let showDeleteDialog = $state(false);
 	let submitting = $state(false);
 	let deleting = $state(false);
+	let progressUpdating = $state(false);
 	let errors = $state<ValidationErrors>({});
 
 	const id = $derived($page.params.id);
@@ -45,6 +49,10 @@
 					} else {
 						prerequisiteObjectives = [];
 					}
+					// Fetch progress if user is logged in
+					if (appStore.user && appStore.personalSpace) {
+						fetchProgress(value.id);
+					}
 				} else {
 					objective = null;
 				}
@@ -60,6 +68,25 @@
 			objSub.unsubscribe();
 		};
 	});
+
+	async function fetchProgress(objectiveId: string) {
+		if (!appStore.user || !appStore.personalSpace) return;
+
+		const result = await progressService.get(appStore.user.id, objectiveId);
+		if (result.success && result.data) {
+			progress = result.data;
+		} else {
+			progress = null;
+		}
+
+		// Check if user can start this objective (prerequisites achieved)
+		const canStartResult = await progressService.canStartObjective(
+			appStore.user.id,
+			objectiveId,
+			appStore.personalSpace.id
+		);
+		canStart = canStartResult;
+	}
 
 	async function handleSave(data: {
 		name: string;
@@ -141,6 +168,76 @@
 		isEditing = false;
 		errors = {};
 	}
+
+	async function handleStartObjective() {
+		if (!objective || !appStore.user || !appStore.personalSpace) return;
+
+		progressUpdating = true;
+		const result = await progressService.start(
+			appStore.user.id,
+			objective.id,
+			appStore.personalSpace.id
+		);
+
+		if (result.success && result.data) {
+			progress = result.data;
+			toastStore.success('Started working on objective');
+		} else {
+			toastStore.error(result.error?.message ?? 'Failed to start objective');
+		}
+		progressUpdating = false;
+	}
+
+	async function handleAchieveObjective() {
+		if (!objective || !appStore.user || !appStore.personalSpace) return;
+
+		progressUpdating = true;
+		const result = await progressService.achieve(
+			appStore.user.id,
+			objective.id,
+			appStore.personalSpace.id
+		);
+
+		if (result.success && result.data) {
+			progress = result.data;
+			toastStore.success('Objective achieved! 🎉');
+		} else {
+			toastStore.error(result.error?.message ?? 'Failed to mark objective as achieved');
+		}
+		progressUpdating = false;
+	}
+
+	async function handleResetProgress() {
+		if (!objective || !appStore.user || !appStore.personalSpace) return;
+
+		progressUpdating = true;
+		const result = await progressService.reset(
+			appStore.user.id,
+			objective.id,
+			appStore.personalSpace.id
+		);
+
+		if (result.success && result.data) {
+			progress = result.data;
+			toastStore.success('Progress reset');
+		} else {
+			toastStore.error(result.error?.message ?? 'Failed to reset progress');
+		}
+		progressUpdating = false;
+	}
+
+	function getProgressStatusLabel(status: Progress['status']): string {
+		switch (status) {
+			case 'not_started':
+				return 'Not Started';
+			case 'in_progress':
+				return 'In Progress';
+			case 'achieved':
+				return 'Achieved';
+			default:
+				return status;
+		}
+	}
 </script>
 
 <div class="page">
@@ -190,6 +287,64 @@
 				{#if objective.description}
 					<p class="description">{objective.description}</p>
 				{/if}
+
+				<!-- Progress tracking section -->
+				<section class="progress-section">
+					<h2>Your Progress</h2>
+					<div class="progress-card">
+						{#if progress}
+							<div class="progress-status status-{progress.status}">
+								{getProgressStatusLabel(progress.status)}
+							</div>
+							{#if progress.status === 'achieved' && progress.achievedAt}
+								<p class="achieved-date">
+									Achieved on {new Date(progress.achievedAt).toLocaleDateString()}
+								</p>
+							{/if}
+						{:else}
+							<div class="progress-status status-not_started">Not Started</div>
+						{/if}
+
+						<div class="progress-actions">
+							{#if !progress || progress.status === 'not_started'}
+								{#if !canStart}
+									<p class="prereq-notice">Complete prerequisites first to start this objective.</p>
+								{:else}
+									<Button
+										variant="primary"
+										onclick={handleStartObjective}
+										disabled={progressUpdating}
+									>
+										{progressUpdating ? 'Starting...' : 'Start Objective'}
+									</Button>
+								{/if}
+							{:else if progress.status === 'in_progress'}
+								<Button
+									variant="primary"
+									onclick={handleAchieveObjective}
+									disabled={progressUpdating}
+								>
+									{progressUpdating ? 'Updating...' : 'Mark as Achieved'}
+								</Button>
+								<Button
+									variant="secondary"
+									onclick={handleResetProgress}
+									disabled={progressUpdating}
+								>
+									Reset
+								</Button>
+							{:else if progress.status === 'achieved'}
+								<Button
+									variant="secondary"
+									onclick={handleResetProgress}
+									disabled={progressUpdating}
+								>
+									Reset Progress
+								</Button>
+							{/if}
+						</div>
+					</div>
+				</section>
 
 				{#if prerequisiteObjectives.length > 0}
 					<section class="prerequisites-section">
@@ -324,5 +479,66 @@
 
 	.prereq-link:hover {
 		border-color: var(--accent-primary);
+	}
+
+	.progress-section {
+		margin-top: var(--space-8);
+		padding-top: var(--space-6);
+		border-top: 1px solid var(--border-default);
+	}
+
+	.progress-section h2 {
+		font-size: var(--text-lg);
+		font-weight: 600;
+		margin-bottom: var(--space-4);
+	}
+
+	.progress-card {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border-default);
+		border-radius: var(--radius-lg);
+		padding: var(--space-4);
+	}
+
+	.progress-status {
+		display: inline-block;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		padding: var(--space-1) var(--space-3);
+		border-radius: var(--radius-md);
+		margin-bottom: var(--space-3);
+	}
+
+	.status-not_started {
+		background: var(--bg-tertiary);
+		color: var(--text-secondary);
+	}
+
+	.status-in_progress {
+		background: hsl(210, 80%, 90%);
+		color: hsl(210, 80%, 35%);
+	}
+
+	.status-achieved {
+		background: hsl(142, 70%, 90%);
+		color: hsl(142, 70%, 30%);
+	}
+
+	.achieved-date {
+		font-size: var(--text-sm);
+		color: var(--text-tertiary);
+		margin-bottom: var(--space-3);
+	}
+
+	.progress-actions {
+		display: flex;
+		gap: var(--space-2);
+		flex-wrap: wrap;
+	}
+
+	.prereq-notice {
+		font-size: var(--text-sm);
+		color: var(--text-tertiary);
+		font-style: italic;
 	}
 </style>
