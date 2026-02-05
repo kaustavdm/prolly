@@ -3,7 +3,8 @@ import { Dexie } from 'dexie';
 export class AppError extends Error {
 	constructor(
 		public code: string,
-		message: string
+		message: string,
+		public field?: string
 	) {
 		super(message);
 		this.name = 'AppError';

@@ -28,7 +28,7 @@ export function ok<T>(data: T): ServiceResult<T> {
 
 // Error helper
 export function err<T>(code: ErrorCode, message: string, field?: string): ServiceResult<T> {
-	return { success: false, error: new AppError(code, message) };
+	return { success: false, error: new AppError(code, message, field) };
 }
 
 // Timestamp helpers
