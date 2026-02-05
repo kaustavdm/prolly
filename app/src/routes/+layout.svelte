@@ -9,6 +9,7 @@
 	import KeyboardModeIndicator from '$lib/components/KeyboardModeIndicator.svelte';
 	import HelpOverlay from '$lib/components/HelpOverlay.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
 
 	let { children } = $props();
 
@@ -50,6 +51,7 @@
 	<CommandPalette />
 	<KeyboardModeIndicator />
 	<HelpOverlay />
+	<ToastContainer />
 </div>
 
 <style>
