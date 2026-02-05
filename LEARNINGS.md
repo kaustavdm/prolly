@@ -40,11 +40,12 @@ Compressed insights from project planning sessions.
 - Theming: token-based architecture, default light + dark themes
 - **Component build order** follows milestones: primitives (M2) → entity cards (M3) → tracking (M4) → views (M5) → polish (M6)
 
-## RFC Process
+## Workflow
 
-- Drafts go in `rfc/drafts/` with title only (no sequence number)
-- Sequence number assigned on acceptance, file moves to `rfc/`
-- Each RFC should have: Summary, Motivation, Specification, Alternatives & Tradeoffs, Open Questions
+- **Signed commits required**—all commits must be GPG/SSH signed
+- **Small commits**—one logical change per commit, easier to review and revert
+- **RFC process**: drafts in `rfc/drafts/` (no number), accepted in `rfc/` (numbered)
+- **Claude credit**: in RFCs if AI-assisted; not in commits unless explicitly requested
 
 ## POC Scope
 
