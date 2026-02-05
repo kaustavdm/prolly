@@ -159,3 +159,19 @@ export function validateObservation(input: ObservationInput): { valid: boolean; 
 		() => required(input.type, 'type')
 	);
 }
+
+export interface ResourceInput {
+	name?: string;
+	spaceId?: string;
+	type?: 'link' | 'file' | 'image' | 'video' | 'document';
+	url?: string;
+}
+
+export function validateResource(input: ResourceInput): { valid: boolean; errors: ValidationErrors } {
+	return validateAll(
+		() => required(input.name, 'name'),
+		() => maxLength(input.name, 200, 'name'),
+		() => required(input.spaceId, 'spaceId'),
+		() => required(input.type, 'type')
+	);
+}
