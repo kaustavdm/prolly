@@ -8,3 +8,6 @@ export { activityService, activityHelpers } from './activity';
 export { progressService } from './progress';
 export { noteService } from './note';
 export { observationService } from './observation';
+export { userService } from './user';
+export { reflectionService, reflectionTemplateService } from './reflection';
+export { resourceService } from './resource';
