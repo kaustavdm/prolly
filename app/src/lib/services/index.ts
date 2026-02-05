@@ -4,3 +4,7 @@ export { curriculumService } from './curriculum';
 export { objectiveService } from './objective';
 export { lessonService } from './lesson';
 export { projectService } from './project';
+export { activityService, activityHelpers } from './activity';
+export { progressService } from './progress';
+export { noteService } from './note';
+export { observationService } from './observation';
