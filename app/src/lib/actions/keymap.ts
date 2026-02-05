@@ -1,7 +1,7 @@
 import { keyboardStore, type KeyboardMode } from '$lib/stores/keyboard.svelte';
 import { normalizeKey, isCommandModeActive } from '$lib/commands/keyboard';
 
-type KeyHandler = (event: KeyboardEvent) => void | boolean;
+type KeyHandler = (event: KeyboardEvent) => void | boolean | Promise<void> | Promise<boolean>;
 
 interface Keymap {
 	[key: string]: KeyHandler | Keymap;
