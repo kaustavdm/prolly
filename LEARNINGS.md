@@ -74,6 +74,14 @@ Out of scope: auth, cloud sync, multi-device, collaboration, public profiles
 - **A11y for modal backdrops**: `role="presentation"` backdrops can use `svelte-ignore a11y_click_events_have_key_events`
 - **A11y for dialogs**: Elements with `role="dialog"` must have `tabindex="-1"` for focus management
 
+## Dependency Management
+
+- **Pin major versions** during active development—avoid breaking changes mid-milestone
+- **`@types/node`** version must match Node.js major version (Node 24 → @types/node 22.x, not 25.x)
+- **Security updates**: Address moderate/high severity via patch/minor updates; defer major bumps to polish phase
+- **`vitest`/`vite` coupling**: These share esbuild; update together to avoid conflicts
+- **`vite-plugin-pwa` 1.x**: Breaking config changes—test thoroughly before upgrading
+
 ## Tech Stack Summary
 
 | Layer | Choice |
