@@ -2,14 +2,17 @@
 	import { liveQuery } from 'dexie';
 	import { db } from '$lib/db';
 	import { appStore } from '$lib/stores/app.svelte';
-	import type { Lesson } from '$lib/models';
+	import { LessonCard } from '$lib/components/lesson';
+	import { EmptyState, LinkButton } from '$lib/components/ui';
+	import type { Lesson, Curriculum } from '$lib/models';
 
 	let lessons = $state<Lesson[]>([]);
+	let curricula = $state<Map<string, Curriculum>>(new Map());
 
 	$effect(() => {
 		if (!appStore.personalSpace) return;
 
-		const subscription = liveQuery(() =>
+		const lessonSub = liveQuery(() =>
 			db.lessons
 				.where('spaceId')
 				.equals(appStore.personalSpace!.id)
@@ -21,31 +24,40 @@
 			error: (err) => console.error(err)
 		});
 
-		return () => subscription.unsubscribe();
+		const currSub = liveQuery(() => db.curricula.toArray()).subscribe({
+			next: (value) => {
+				const map = new Map<string, Curriculum>();
+				value.forEach((c) => map.set(c.id, c));
+				curricula = map;
+			},
+			error: console.error
+		});
+
+		return () => {
+			lessonSub.unsubscribe();
+			currSub.unsubscribe();
+		};
 	});
 </script>
 
 <div class="page">
 	<header class="page-header">
 		<h1>Lessons</h1>
-		<a href="/lessons/new" class="btn btn-primary">New Lesson</a>
+		<LinkButton href="/lessons/new">New Lesson</LinkButton>
 	</header>
 
 	{#if lessons.length === 0}
-		<div class="empty-state">
-			<p>No lessons yet. Create lessons to organize your learning content.</p>
-			<a href="/lessons/new" class="btn btn-primary">Create Lesson</a>
-		</div>
+		<EmptyState
+			title="No lessons yet"
+			description="Create lessons to organize your learning content."
+			actionHref="/lessons/new"
+			actionLabel="Create Lesson"
+		/>
 	{:else}
 		<ul class="entity-list">
 			{#each lessons as lesson}
 				<li>
-					<a href="/lessons/{lesson.id}" class="entity-card">
-						<h3>{lesson.name}</h3>
-						{#if lesson.description}
-							<p>{lesson.description}</p>
-						{/if}
-					</a>
+					<LessonCard {lesson} curriculum={curricula.get(lesson.curriculumId ?? '')} />
 				</li>
 			{/each}
 		</ul>
@@ -70,73 +82,11 @@
 		font-weight: 600;
 	}
 
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		padding: var(--space-2) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		text-decoration: none;
-		cursor: pointer;
-		border: none;
-	}
-
-	.btn-primary {
-		background: var(--accent-primary);
-		color: white;
-	}
-
-	.btn-primary:hover {
-		opacity: 0.9;
-		text-decoration: none;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--space-12);
-		background: var(--bg-secondary);
-		border-radius: var(--radius-lg);
-		border: 1px dashed var(--border-default);
-	}
-
-	.empty-state p {
-		color: var(--text-secondary);
-		margin-bottom: var(--space-4);
-	}
-
 	.entity-list {
 		list-style: none;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-3);
-	}
-
-	.entity-card {
-		display: block;
-		padding: var(--space-4);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border-default);
-		border-radius: var(--radius-lg);
-		text-decoration: none;
-	}
-
-	.entity-card:hover {
-		border-color: var(--accent-primary);
-		text-decoration: none;
-	}
-
-	.entity-card h3 {
-		font-size: var(--text-lg);
-		font-weight: 600;
-		color: var(--text-primary);
-		margin-bottom: var(--space-1);
-	}
-
-	.entity-card p {
-		font-size: var(--text-sm);
-		color: var(--text-secondary);
-		margin: 0;
 	}
 </style>

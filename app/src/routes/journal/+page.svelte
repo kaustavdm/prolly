@@ -2,6 +2,7 @@
 	import { liveQuery } from 'dexie';
 	import { db } from '$lib/db';
 	import { appStore } from '$lib/stores/app.svelte';
+	import { LinkButton } from '$lib/components/ui';
 	import type { Activity } from '$lib/models';
 
 	let activities = $state<Activity[]>([]);
@@ -45,7 +46,7 @@
 <div class="page">
 	<header class="page-header">
 		<h1>Journal</h1>
-		<a href="/journal/new" class="btn btn-primary">New Entry</a>
+		<LinkButton href="/journal/new">New Entry</LinkButton>
 	</header>
 
 	{#if activities.length === 0}
@@ -83,23 +84,6 @@
 	.page-header h1 {
 		font-size: var(--text-2xl);
 		font-weight: 600;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		padding: var(--space-2) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		text-decoration: none;
-		cursor: pointer;
-		border: none;
-	}
-
-	.btn-primary {
-		background: var(--accent-primary);
-		color: white;
 	}
 
 	.empty-state {

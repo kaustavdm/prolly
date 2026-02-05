@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { appStore } from '$lib/stores/app.svelte';
 	import { db } from '$lib/db';
+	import { Button } from '$lib/components/ui';
 	import type { ThemePreference } from '$lib/models';
 
 	let userName = $state(appStore.user?.name || '');
@@ -33,7 +34,7 @@
 			<label for="name">Display Name</label>
 			<div class="input-group">
 				<input type="text" id="name" bind:value={userName} />
-				<button class="btn btn-secondary" onclick={updateName}>Save</button>
+				<Button variant="secondary" onclick={updateName}>Save</Button>
 			</div>
 		</div>
 	</section>
@@ -124,24 +125,6 @@
 	select:focus {
 		outline: none;
 		border-color: var(--accent-primary);
-	}
-
-	.btn {
-		padding: var(--space-2) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		cursor: pointer;
-		border: none;
-	}
-
-	.btn-secondary {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-	}
-
-	.btn-secondary:hover {
-		background: var(--border-default);
 	}
 
 	.hint {

@@ -3,7 +3,7 @@
 	import { db } from '$lib/db';
 	import { appStore } from '$lib/stores/app.svelte';
 	import { CurriculumCard } from '$lib/components/curriculum';
-	import { EmptyState, Button } from '$lib/components/ui';
+	import { EmptyState, LinkButton } from '$lib/components/ui';
 	import type { Curriculum, Objective } from '$lib/models';
 
 	let curricula = $state<Curriculum[]>([]);
@@ -47,7 +47,7 @@
 <div class="page">
 	<header class="page-header">
 		<h1>Curricula</h1>
-		<a href="/curricula/new" class="btn btn-primary">New Curriculum</a>
+		<LinkButton href="/curricula/new">New Curriculum</LinkButton>
 	</header>
 
 	{#if curricula.length === 0}
@@ -87,25 +87,6 @@
 	.page-header h1 {
 		font-size: var(--text-2xl);
 		font-weight: 600;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		padding: var(--space-2) var(--space-4);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		text-decoration: none;
-	}
-
-	.btn-primary {
-		background: var(--accent-primary);
-		color: white;
-	}
-
-	.btn-primary:hover {
-		opacity: 0.9;
 	}
 
 	.curricula-list {

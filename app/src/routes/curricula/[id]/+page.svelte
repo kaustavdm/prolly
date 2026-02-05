@@ -6,7 +6,7 @@
 	import { curriculumService } from '$lib/services';
 	import { toastStore } from '$lib/stores/toast.svelte';
 	import { CurriculumForm } from '$lib/components/curriculum';
-	import { Button, ConfirmDialog, LoadingState, EmptyState } from '$lib/components/ui';
+	import { Button, ConfirmDialog, LoadingState, EmptyState, LinkButton } from '$lib/components/ui';
 	import type { Curriculum, Objective } from '$lib/models';
 	import type { ValidationErrors } from '$lib/services/validation';
 
@@ -152,9 +152,9 @@
 				<section class="objectives-section">
 					<div class="section-header">
 						<h2>Objectives</h2>
-						<a href="/objectives/new?curriculumId={curriculum.id}" class="btn btn-primary btn-sm">
+						<LinkButton href="/objectives/new?curriculumId={curriculum.id}" size="sm">
 							Add Objective
-						</a>
+						</LinkButton>
 					</div>
 
 					{#if objectives.length === 0}
@@ -261,26 +261,6 @@
 	.section-header h2 {
 		font-size: var(--text-lg);
 		font-weight: 600;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		padding: var(--space-2) var(--space-4);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		border-radius: var(--radius-md);
-		text-decoration: none;
-	}
-
-	.btn-primary {
-		background: var(--accent-primary);
-		color: white;
-	}
-
-	.btn-sm {
-		padding: var(--space-1) var(--space-3);
-		font-size: var(--text-xs);
 	}
 
 	.empty-objectives {
