@@ -36,7 +36,7 @@
 	});
 
 	async function handleSubmit(data: { content: string; tags: string[] }) {
-		if (!appStore.user || !appStore.personalSpace) return;
+		if (!appStore.user || !appStore.personalSpace || !noteId) return;
 
 		submitting = true;
 		errors = {};
@@ -66,6 +66,8 @@
 	}
 
 	async function confirmDelete() {
+		if (!noteId) return;
+
 		const result = await noteService.delete(noteId);
 
 		if (result.success) {

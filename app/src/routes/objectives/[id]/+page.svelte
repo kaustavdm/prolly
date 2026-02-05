@@ -72,7 +72,7 @@
 	async function fetchProgress(objectiveId: string) {
 		if (!appStore.user || !appStore.personalSpace) return;
 
-		const result = await progressService.get(appStore.user.id, objectiveId);
+		const result = await progressService.getByUserObjective(appStore.user.id, objectiveId);
 		if (result.success && result.data) {
 			progress = result.data;
 		} else {
@@ -82,8 +82,7 @@
 		// Check if user can start this objective (prerequisites achieved)
 		const canStartResult = await progressService.canStartObjective(
 			appStore.user.id,
-			objectiveId,
-			appStore.personalSpace.id
+			objectiveId
 		);
 		canStart = canStartResult;
 	}
@@ -208,14 +207,10 @@
 	}
 
 	async function handleResetProgress() {
-		if (!objective || !appStore.user || !appStore.personalSpace) return;
+		if (!objective || !appStore.user || !progress) return;
 
 		progressUpdating = true;
-		const result = await progressService.reset(
-			appStore.user.id,
-			objective.id,
-			appStore.personalSpace.id
-		);
+		const result = await progressService.reset(progress.id);
 
 		if (result.success && result.data) {
 			progress = result.data;
