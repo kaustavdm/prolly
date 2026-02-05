@@ -13,7 +13,9 @@
 
 	let { curriculum, errors = {}, submitting = false, onsubmit, oncancel }: Props = $props();
 
+	// svelte-ignore state_referenced_locally
 	let name = $state(curriculum?.name ?? '');
+	// svelte-ignore state_referenced_locally
 	let description = $state(curriculum?.description ?? '');
 
 	function handleSubmit(event: SubmitEvent) {

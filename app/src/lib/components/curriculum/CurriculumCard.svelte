@@ -8,6 +8,7 @@
 
 	let { curriculum, objectiveCount = 0 }: Props = $props();
 
+	// svelte-ignore state_referenced_locally
 	const formattedDate = new Date(curriculum.createdAt).toLocaleDateString(undefined, {
 		month: 'short',
 		day: 'numeric',
