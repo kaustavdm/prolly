@@ -17,8 +17,9 @@
 		}
 	});
 
+	// Reset selection when search query changes
 	$effect(() => {
-		searchQuery;
+		const _ = searchQuery; // Track dependency explicitly
 		selectedIndex = 0;
 	});
 
@@ -58,7 +59,8 @@
 {#if keyboardStore.commandPaletteOpen}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div class="command-palette-backdrop" onclick={handleBackdropClick} role="presentation">
-		<div class="command-palette" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Command palette">
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<div class="command-palette" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true" aria-label="Command palette">
 			<div class="search-container">
 				<input
 					bind:this={inputRef}
