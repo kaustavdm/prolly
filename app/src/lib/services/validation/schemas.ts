@@ -126,3 +126,36 @@ export function validateProject(input: ProjectInput): { valid: boolean; errors: 
 		() => maxLength(input.description, 2000, 'description')
 	);
 }
+
+export interface NoteInput {
+	content?: string;
+	authorId?: string;
+	spaceId?: string;
+	tags?: string[];
+}
+
+export function validateNote(input: NoteInput): { valid: boolean; errors: ValidationErrors } {
+	return validateAll(
+		() => required(input.content, 'content'),
+		() => maxLength(input.content, 10000, 'content'),
+		() => required(input.authorId, 'authorId'),
+		() => required(input.spaceId, 'spaceId')
+	);
+}
+
+export interface ObservationInput {
+	content?: string;
+	authorId?: string;
+	spaceId?: string;
+	type?: 'self' | 'peer' | 'learner';
+}
+
+export function validateObservation(input: ObservationInput): { valid: boolean; errors: ValidationErrors } {
+	return validateAll(
+		() => required(input.content, 'content'),
+		() => maxLength(input.content, 10000, 'content'),
+		() => required(input.authorId, 'authorId'),
+		() => required(input.spaceId, 'spaceId'),
+		() => required(input.type, 'type')
+	);
+}
