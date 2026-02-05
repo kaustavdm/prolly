@@ -9,6 +9,17 @@ import {
 	type ServiceResult
 } from './base';
 
+/**
+ * Default user ID for single-user local-first operation.
+ * The app works without login - this user is created automatically on first use.
+ */
+export const DEFAULT_USER_ID = 'default-local-user';
+
+/**
+ * Default user name for the implicit local user.
+ */
+const DEFAULT_USER_NAME = 'Local User';
+
 export interface UserUpdateInput {
 	name?: string;
 	email?: string;
@@ -108,8 +119,7 @@ export const userService = {
 				name,
 				settings: {
 					theme: 'system',
-					notifications: true,
-					defaultSpaceId: undefined
+					keyboardLayout: 'default'
 				},
 				createdAt: now,
 				updatedAt: now
@@ -121,5 +131,22 @@ export const userService = {
 
 			return ok(user);
 		}, 'user.getOrCreate');
+	},
+
+	/**
+	 * Get or create the default local user.
+	 * This is the primary method for single-user local-first operation.
+	 * No login required - the user is created automatically on first use.
+	 */
+	async getOrCreateDefault(): Promise<ServiceResult<User>> {
+		return this.getOrCreate(DEFAULT_USER_ID, DEFAULT_USER_NAME);
+	},
+
+	/**
+	 * Get the current (default) user.
+	 * Shorthand for getOrCreateDefault() - ensures user always exists.
+	 */
+	async getCurrent(): Promise<ServiceResult<User>> {
+		return this.getOrCreateDefault();
 	}
 };

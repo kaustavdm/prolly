@@ -1,4 +1,5 @@
 import { db, localDb, generateUUIDv7 } from '$lib/db';
+import { userService, DEFAULT_USER_ID } from '$lib/services';
 import type { User, Space } from '$lib/models';
 import type { ThemePreference } from '$lib/models/base';
 
@@ -77,21 +78,13 @@ export async function initializeApp() {
 		}
 	});
 
-	let user = await db.users.toCollection().first();
-	if (!user) {
-		const now = new Date().toISOString();
-		user = {
-			id: generateUUIDv7(),
-			name: 'Learner',
-			settings: {
-				theme: 'system',
-				keyboardLayout: 'default'
-			},
-			createdAt: now,
-			updatedAt: now
-		};
-		await db.users.add(user);
+	// Get or create the default local user via UserService
+	const userResult = await userService.getOrCreateDefault();
+	if (!userResult.success || !userResult.data) {
+		console.error('Failed to initialize user:', userResult.error);
+		return;
 	}
+	const user = userResult.data;
 	appStore.setUser(user);
 
 	let personalSpace = await db.spaces.where('ownerId').equals(user.id).and((s) => s.type === 'personal').first();
