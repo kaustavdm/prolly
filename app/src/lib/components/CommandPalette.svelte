@@ -5,7 +5,7 @@
 
 	let searchQuery = $state('');
 	let selectedIndex = $state(0);
-	let inputRef: HTMLInputElement;
+	let inputRef = $state<HTMLInputElement | null>(null);
 
 	let filteredCommands = $derived(commandRegistry.search(searchQuery));
 
@@ -56,6 +56,7 @@
 </script>
 
 {#if keyboardStore.commandPaletteOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div class="command-palette-backdrop" onclick={handleBackdropClick} role="presentation">
 		<div class="command-palette" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Command palette">
 			<div class="search-container">

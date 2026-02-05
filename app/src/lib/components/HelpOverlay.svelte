@@ -19,8 +19,10 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if keyboardStore.helpOpen}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div class="help-backdrop" onclick={handleBackdropClick} role="presentation">
-		<div class="help-overlay" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
+		<div class="help-overlay" onclick={(e) => e.stopPropagation()} role="dialog" tabindex="-1" aria-modal="true" aria-label="Keyboard shortcuts">
 			<header class="help-header">
 				<h2>Keyboard Shortcuts</h2>
 				<button class="close-button" onclick={() => keyboardStore.closeHelp()} aria-label="Close">
